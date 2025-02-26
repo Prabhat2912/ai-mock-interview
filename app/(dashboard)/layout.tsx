@@ -3,12 +3,10 @@ import Header from "./dashboard/_components/Header";
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <html lang="en">
-      <body className="min-h-screen">
-        <Header />
-        {children}
-      </body>
-    </html>
+    <>
+      <Header />
+      <main className="min-h-screen mx-5 md:mx-20 lg:mx-36">{children}</main>
+    </>
   );
 };
 

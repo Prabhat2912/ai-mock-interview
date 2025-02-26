@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
 // Ensure your API key is set in environment variables
-const apiKey = process.env.GEMINI_API_KEY as string;
+const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY as string;
 
 if (!apiKey) {
   throw new Error("GEMINI_API_KEY is missing in environment variables");

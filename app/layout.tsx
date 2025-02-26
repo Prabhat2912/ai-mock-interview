@@ -1,5 +1,8 @@
 import { ClerkProvider } from "@clerk/nextjs";
+import { Toaster } from "sonner";
 import "./globals.css";
+
+// Suppress hydration warnings for known mismatches (optional, use with caution)
 
 export default function RootLayout({
   children,
@@ -8,8 +11,11 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body>{children}</body>
+      <html lang="en" suppressHydrationWarning>
+        <body suppressHydrationWarning>
+          <Toaster />
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   );
