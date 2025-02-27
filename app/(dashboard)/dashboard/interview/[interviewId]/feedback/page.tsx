@@ -55,7 +55,7 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
       <h2 className=" font-bold text-2xl mt-4 ">Here is your feedback</h2>
       <h2 className="text-lg text-violet-800 font-semibold mt-4 ">
         Your Overall Interview Rating is :{" "}
-        {results && results?.length > 0 ? getAvgRating() : "0"}/10
+        {!loading && results && results?.length > 0 ? getAvgRating() : "0"}/10
       </h2>
       <h2 className="text-sm text-gray-500 font-medium mt-4">
         {results && results.length > 0
