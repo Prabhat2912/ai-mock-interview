@@ -13,6 +13,7 @@ const Header = () => {
     <div className="flex p-4 bg-gray-200 shadow-md drop-shadow-md justify-between items-center">
       <Image
         src="/logo.svg"
+        className="cursor-pointer"
         onClick={() => {
           window.location.href = "/";
         }}

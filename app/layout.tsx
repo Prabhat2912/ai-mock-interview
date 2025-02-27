@@ -13,7 +13,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <body suppressHydrationWarning>
-          <Toaster />
+          <Toaster richColors />
           {children}
         </body>
       </html>
