@@ -25,7 +25,7 @@ const AddNewInterview = () => {
   const [description, setDescription] = useState("");
   const [exp, setExp] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [jsonQuestions, setJsonQuestions] = useState([]);
+  const [jsonQuestions, setJsonQuestions] = useState();
   const { user } = useUser();
   const router = useRouter();
   const onSubmit = async (e: React.FormEvent) => {
@@ -41,14 +41,14 @@ const AddNewInterview = () => {
       }
       const mockRespJson = result.response
         .text()
-        .replace("```json", "")
-        .replace("```", "");
+        .replace(/```json|```/g, "")
+        .trim();
       setJsonQuestions(JSON.parse(mockRespJson));
       if (mockRespJson) {
         const res = await db
           .insert(MockInterview)
           .values({
-            jsonMockResp: jsonQuestions.toString(),
+            jsonMockResp: mockRespJson.toString(),
             jobPosition: role,
             jobDescription: description,
             jobExperience: exp.toString(),
@@ -67,6 +67,11 @@ const AddNewInterview = () => {
         toast.error("Error in generating interview questions");
       }
       console.log(JSON.parse(mockRespJson));
+      if (jsonQuestions) {
+        console.log(JSON.parse(jsonQuestions));
+      } else {
+        console.log("jsonQuestions is undefined");
+      }
     } catch (error) {
       toast.error("Error in generating interview questions");
       console.log(error);
