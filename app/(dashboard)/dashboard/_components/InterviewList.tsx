@@ -11,9 +11,8 @@ import InterviewItemCard from "./InterviewItemCard";
 const InterviewList = () => {
   const { user } = useUser();
   const [Interviews, setInterviews] = useState<jobResponse[] | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const getInterviews = async () => {
-    setLoading(true);
     if (!user?.primaryEmailAddress?.emailAddress) return;
     try {
       const res = await db
@@ -49,11 +48,17 @@ const InterviewList = () => {
   }, [Interviews]);
   return (
     <div>
-      <h2 className="font-medium text-xl">Previous Mock Interview</h2>
+      <h2 className="font-medium text-xl">
+        {!loading && Interviews && Interviews.length > 0
+          ? " Previous Mock Interviews"
+          : "No Previous Mock Interviews"}
+      </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 my-3">
-        {!loading && Interviews && Interviews.length > 0
-          ? Interviews.map((interview, index) => (
+        {!loading
+          ? Interviews &&
+            Interviews.length > 0 &&
+            Interviews.map((interview, index) => (
               <InterviewItemCard interview={interview} key={index} />
             ))
           : [1, 2, 3, 4].map((item, index) => (

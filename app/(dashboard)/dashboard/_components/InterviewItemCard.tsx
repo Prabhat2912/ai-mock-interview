@@ -1,19 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { jobResponse } from "@/types/types";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import React from "react";
 
 function InterviewItemCard({ interview }: { interview: jobResponse }) {
-  const router = useRouter();
-
-  const onStart = () => {
-    router.push("/dashboard/interview/" + interview?.mockId);
-  };
-
-  const onFeedbackPress = () => {
-    router.push("/dashboard/interview/" + interview.mockId + "/feedback");
-  };
-
   return (
     <div className="border shadow-sm rounded-lg p-3">
       <h2 className="font-bold text-primary">{interview?.jobPosition}</h2>
@@ -24,17 +14,19 @@ function InterviewItemCard({ interview }: { interview: jobResponse }) {
         Created At:{interview.createdAt}
       </h2>
       <div className="flex justify-between mt-2 gap-5">
-        <Button
-          size="sm"
-          variant="outline"
-          className="w-full"
-          onClick={onFeedbackPress}
+        <Link
+          prefetch
+          href={`/dashboard/interview/${interview?.mockId}/feedback`}
         >
-          Feedback
-        </Button>
-        <Button size="sm" className="w-full" onClick={onStart}>
-          Start
-        </Button>
+          <Button size="sm" variant="outline" className="w-full">
+            Feedback
+          </Button>
+        </Link>
+        <Link prefetch href={`/dashboard/interview/${interview?.mockId}`}>
+          <Button size="sm" className="w-full">
+            Start
+          </Button>
+        </Link>
       </div>
     </div>
   );

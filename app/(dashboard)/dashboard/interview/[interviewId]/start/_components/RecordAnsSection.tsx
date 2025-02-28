@@ -42,7 +42,6 @@ const RecordAnsSection = ({
   const [webcam, setWebcam] = useState(false);
 
   useEffect(() => {
-    // Safely extract transcripts from results
     const transcript = (results as SpeechResult[])
       .map((result) =>
         typeof result === "string" ? result : result.transcript

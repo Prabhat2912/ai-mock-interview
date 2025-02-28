@@ -17,7 +17,7 @@ import Link from "next/link";
 const Feedback = ({ params }: { params: Promise<Params> }) => {
   const [resolvedParams, setResolvedParams] = useState<Params | null>(null);
   const [results, setResults] = useState<InterviewFeedback[] | null>(null); // Start as null for uninitialized state
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Resolve params from Promise
   useEffect(() => {
@@ -38,7 +38,6 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
       return;
     }
 
-    setLoading(true);
     try {
       const res = await db
         .select()
@@ -56,7 +55,6 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
     }
   };
 
-  // Fetch results when resolvedParams changes, but only if interviewId is valid
   useEffect(() => {
     if (resolvedParams) {
       getResults();
@@ -69,7 +67,7 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
         (acc, curr) => acc + parseInt(curr.rating || "0"),
         0
       );
-      return (total / results.length).toFixed(1); // Round to 1 decimal
+      return (total / results.length).toFixed(1);
     }
     return "0";
   };
@@ -82,17 +80,26 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
       <h2 className="font-bold text-2xl mt-4">Here is your feedback</h2>
       <h2 className="text-lg text-violet-800 font-semibold mt-4">
         Your Overall Interview Rating is:{" "}
-        {!loading && results !== null ? `${getAvgRating()}/10` : "Loading..."}
+        {!loading && results !== null ? `${getAvgRating()}/10` : "N/A"}
       </h2>
       <h2 className="text-sm text-gray-500 font-medium mt-4">
         {results && results.length > 0
           ? "Find below interview question with correct answer, your answer, and feedback for improvement"
-          : "No feedback found"}
+          : !loading
+          ? "No feedback found"
+          : "Loading feedbacks..."}
       </h2>
-      <div>
+      <div className="h-96 p-4 border rounded-lg my-4 overflow-y-auto">
         {loading ? (
-          <p>Loading feedback...</p>
-        ) : (
+          <div className="w-full h-full flex flex-col gap-4 justify-center items-center">
+            {[1, 2, 3, 4, 5].map((index) => (
+              <div
+                key={index}
+                className="h-[350px] w-full bg-gray-200 animate-pulse rounded-lg "
+              ></div>
+            ))}
+          </div>
+        ) : results && results.length > 0 ? (
           results?.map((res, i) => (
             <Collapsible key={i} className="w-full">
               <CollapsibleTrigger className="text-left flex justify-between gap-7 w-full bg-secondary rounded-lg p-2 my-2">
@@ -120,6 +127,10 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
               </CollapsibleContent>
             </Collapsible>
           ))
+        ) : (
+          <div className="w-full h-full flex justify-center items-center">
+            No feedback found
+          </div>
         )}
       </div>
       <Link href="/dashboard">

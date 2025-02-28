@@ -6,18 +6,14 @@ export const options: navLinks[] = [
     name: "Dashboard",
     path: "/dashboard",
   },
+
   {
     id: 2,
-    name: "Questions",
-    path: "/questions",
-  },
-  {
-    id: 3,
     name: "Upgrade",
     path: "/dashboard/upgrade",
   },
   {
-    id: 4,
+    id: 3,
     name: "How it Works?",
     path: "#hiw",
   },
