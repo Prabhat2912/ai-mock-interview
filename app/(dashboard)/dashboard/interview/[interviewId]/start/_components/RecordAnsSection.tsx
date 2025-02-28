@@ -118,7 +118,7 @@ const RecordAnsSection = ({
             style={{
               height: 300,
               width: "100%",
-              zIndex: 10,
+              zIndex: 50,
             }}
           />
         ) : (
