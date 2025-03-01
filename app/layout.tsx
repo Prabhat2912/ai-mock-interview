@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 
     images: [
       {
-        url: domain + "/opengraph-image.svg",
+        url: domain + "/opengraph-image.png",
         width: 800,
         height: 800,
         alt: title,
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     },
     images: [
       {
-        url: domain + "/opengraph-image.svg",
+        url: domain + "/opengraph-image.png",
         alt: title,
       },
     ],
