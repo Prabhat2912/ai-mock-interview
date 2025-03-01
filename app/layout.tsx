@@ -4,8 +4,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 const domain = process.env.NEXT_PUBLIC_BASE_URL || "";
-const title = "Portfolio Website";
-const description = "Portfolio Website by Prabhat Kumar";
+const title = "AI Mock Interview";
+const description = "AI Mock Interview platform powered by Gemini";
 export const metadata: Metadata = {
   title: title,
   description: description,
