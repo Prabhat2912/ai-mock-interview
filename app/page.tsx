@@ -176,13 +176,13 @@ export default function Home() {
             <AtomIcon className="h-8 w-8" />
 
             <h2 className="mt-4 text-xl font-bold text-black">
-              Write promot for your form
+              Write prompt for your form
             </h2>
 
             <p className="mt-1 text-sm text-gray-600">
-              Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex ut quo
-              possimus adipisci distinctio alias voluptatum blanditiis
-              laudantium.
+              Create a detailed prompt for your interview form to guide the AI
+              in generating relevant questions. Be specific about the job role,
+              required skills, and any other important details.
             </p>
           </Link>
 
@@ -193,13 +193,13 @@ export default function Home() {
             <Edit className="h-8 w-8" />
 
             <h2 className="mt-4 text-xl font-bold text-black">
-              Edit Your form{" "}
+              Edit Your Form
             </h2>
 
             <p className="mt-1 text-sm text-gray-600">
-              Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex ut quo
-              possimus adipisci distinctio alias voluptatum blanditiis
-              laudantium.
+              Customize the interview form by editing the questions and prompts.
+              Ensure the form aligns with the job role and skills you are
+              targeting.
             </p>
           </Link>
 
@@ -214,9 +214,9 @@ export default function Home() {
             </h2>
 
             <p className="mt-1 text-sm text-gray-600">
-              Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex ut quo
-              possimus adipisci distinctio alias voluptatum blanditiis
-              laudantium.
+              Share your interview form with candidates and start accepting
+              responses. Review the answers to evaluate the candidates&apos;
+              suitability for the job role.
             </p>
           </Link>
         </div>

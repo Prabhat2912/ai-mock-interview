@@ -1,6 +1,7 @@
+"use client";
 import { mockInterviewQuestionsRes } from "@/types/types";
 import { Lightbulb, Volume2 } from "lucide-react";
-import React from "react";
+import React, { useEffect } from "react";
 
 const QuestionSection = ({
   question,
@@ -11,14 +12,27 @@ const QuestionSection = ({
   activeQuestionIndex: number;
   setActiveQuestionIndex: (index: number) => void;
 }) => {
-  const textToSpeach = (text: string) => {
+  const textToSpeech = (text: string) => {
     if ("speechSynthesis" in window) {
+      // Cancel any ongoing speech before starting new one
+      window.speechSynthesis.cancel();
       const speech = new SpeechSynthesisUtterance(text);
       window.speechSynthesis.speak(speech);
     } else {
       alert("Your browser doesn't support text to speech.");
     }
   };
+
+  // Cleanup speech synthesis on component unmount or page reload
+  useEffect(() => {
+    // Cleanup function runs when component unmounts (e.g., page reload)
+    return () => {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel(); // Stop any ongoing speech
+      }
+    };
+  }, []); // Empty dependency array: runs only on mount and unmount
+
   return (
     question.length > 0 && (
       <div className="p-5 border rounded-lg">
@@ -28,7 +42,7 @@ const QuestionSection = ({
               <div key={index} onClick={() => setActiveQuestionIndex(index)}>
                 <h2
                   className={`p-2 text-center cursor-pointer text-xs md:text-sm lg:text-base ${
-                    activeQuestionIndex == index && "bg-primary text-white"
+                    activeQuestionIndex === index && "bg-primary text-white"
                   } rounded-full`}
                 >
                   Question #{index + 1}
@@ -42,7 +56,7 @@ const QuestionSection = ({
         <Volume2
           className="cursor-pointer"
           onClick={() => {
-            textToSpeach(question[activeQuestionIndex].question);
+            textToSpeech(question[activeQuestionIndex].question);
             console.log("clicked");
           }}
         />
