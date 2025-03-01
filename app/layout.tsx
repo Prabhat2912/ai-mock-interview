@@ -28,8 +28,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: domain + "/opengraph-image.png",
-        width: 800,
-        height: 800,
+        width: 300,
+        height: 300,
         alt: title,
       },
     ],
@@ -44,6 +44,8 @@ export const metadata: Metadata = {
       {
         url: domain + "/opengraph-image.png",
         alt: title,
+        width: 300,
+        height: 300,
       },
     ],
     description: description,
