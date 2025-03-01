@@ -23,15 +23,13 @@ const QuestionSection = ({
     }
   };
 
-  // Cleanup speech synthesis on component unmount or page reload
   useEffect(() => {
-    // Cleanup function runs when component unmounts (e.g., page reload)
     return () => {
       if ("speechSynthesis" in window) {
-        window.speechSynthesis.cancel(); // Stop any ongoing speech
+        window.speechSynthesis.cancel();
       }
     };
-  }, []); // Empty dependency array: runs only on mount and unmount
+  }, []);
 
   return (
     question.length > 0 && (
