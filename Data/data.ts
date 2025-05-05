@@ -15,7 +15,7 @@ export const options: navLinks[] = [
   {
     id: 3,
     name: "How it Works?",
-    path: "#hiw",
+    path: "/#hiw",
   },
 ];
 export const planData: planDataType[] = [
