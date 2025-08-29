@@ -306,7 +306,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **GitHub Issues**: [Report bugs or request features](https://github.com/Prabhat2912/ai-mock-interview/issues)
 - **Email**: pk993105@gmail.com
-- **Twitter**: [@Prabhat2912](https://twitter.com/Prabhat2912)
+- **Twitter**: [@real_prabhat1](https://twitter.com/real_prabhat1)
 
 ---
 
