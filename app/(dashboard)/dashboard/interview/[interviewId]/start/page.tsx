@@ -24,6 +24,18 @@ const Start = ({ params }: { params: Promise<Params> }) => {
   >([]);
   const [loading, setLoading] = useState(true);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+  const [interviewSessionId, setInterviewSessionId] = useState<string>("");
+
+  // Generate session ID on component mount
+  useEffect(() => {
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    setInterviewSessionId(sessionId);
+    // Store in session storage for persistence across page reloads
+    sessionStorage.setItem(
+      `interview_${resolvedParams?.interviewId}_session`,
+      sessionId,
+    );
+  }, [resolvedParams?.interviewId]);
 
   useEffect(() => {
     params.then((data) => setResolvedParams(data));
@@ -58,10 +70,12 @@ const Start = ({ params }: { params: Promise<Params> }) => {
     fetch("/api/answers/analyze-batch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mockId }),
+      body: JSON.stringify({ mockId, interviewSessionId }),
       keepalive: true,
     }).catch((err) => console.warn("Batch analysis kickoff failed", err));
-    toast.info("Behavior analysis started in the background. It will appear on the feedback page when ready.");
+    toast.info(
+      "Behavior analysis started in the background. It will appear on the feedback page when ready.",
+    );
   };
 
   return (
@@ -85,6 +99,7 @@ const Start = ({ params }: { params: Promise<Params> }) => {
           interViewData={interviewData}
           question={mockInterviewQuestions}
           activeQuestionIndex={activeQuestionIndex}
+          interviewSessionId={interviewSessionId}
         />
       </div>
       <div className="flex gap-4  ">

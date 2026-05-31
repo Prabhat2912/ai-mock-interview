@@ -15,10 +15,12 @@ const RecordAnsSection = ({
   question,
   activeQuestionIndex,
   interViewData,
+  interviewSessionId,
 }: {
   question: mockInterviewQuestionsRes[];
   activeQuestionIndex: number;
   interViewData: jobResponse[];
+  interviewSessionId: string;
 }) => {
   const {
     isRecording,
@@ -88,7 +90,7 @@ const RecordAnsSection = ({
       console.error("getUserMedia failed", err);
       const msg = (err as Error)?.message || String(err);
       setCameraError(
-        `Camera access failed: ${msg}. Click the lock icon in the URL bar, allow Camera + Microphone, and reload.`
+        `Camera access failed: ${msg}. Click the lock icon in the URL bar, allow Camera + Microphone, and reload.`,
       );
       setCameraReady(false);
     }
@@ -112,8 +114,8 @@ const RecordAnsSection = ({
     const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
       ? "video/webm;codecs=vp9,opus"
       : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-      ? "video/webm;codecs=vp8,opus"
-      : "video/webm";
+        ? "video/webm;codecs=vp8,opus"
+        : "video/webm";
     const rec = new MediaRecorder(stream, { mimeType });
     rec.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) recordedChunksRef.current.push(e.data);
@@ -128,7 +130,9 @@ const RecordAnsSection = ({
       const rec = mediaRecorderRef.current;
       if (!rec || rec.state === "inactive") return resolve(null);
       rec.onstop = () => {
-        const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+        const blob = new Blob(recordedChunksRef.current, {
+          type: "video/webm",
+        });
         recordedChunksRef.current = [];
         resolve(blob);
       };
@@ -165,6 +169,7 @@ const RecordAnsSection = ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             mockId: interViewData[0]?.mockId,
+            interviewSessionId,
             question: question[activeQuestionIndex].question,
             correctAns: question[activeQuestionIndex].answer,
             userAns: answer,

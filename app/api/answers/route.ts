@@ -7,12 +7,20 @@ import { generateJSON } from "@/utils/gemini";
 
 export async function POST(req: Request) {
   const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!userId)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const user = await currentUser();
   const email = user?.primaryEmailAddress?.emailAddress || "";
 
-  const { mockId, question, correctAns, userAns, videoUrl } = await req.json();
+  const {
+    mockId,
+    interviewSessionId,
+    question,
+    correctAns,
+    userAns,
+    videoUrl,
+  } = await req.json();
   if (!mockId || !question || !userAns) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
@@ -21,7 +29,9 @@ export async function POST(req: Request) {
 
   let gemini: { rating: string; feedback: string };
   try {
-    gemini = await generateJSON<{ rating: string; feedback: string }>(feedbackPrompt);
+    gemini = await generateJSON<{ rating: string; feedback: string }>(
+      feedbackPrompt,
+    );
   } catch (err) {
     console.error("Gemini feedback failed", err);
     gemini = { rating: "0", feedback: "AI feedback unavailable." };
@@ -29,6 +39,7 @@ export async function POST(req: Request) {
 
   await db.insert(UserAns).values({
     mockIdRef: mockId,
+    interviewSessionId: interviewSessionId || null,
     question,
     correctAns: correctAns || "",
     userAns,
