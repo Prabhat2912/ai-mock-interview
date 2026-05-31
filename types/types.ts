@@ -14,6 +14,20 @@ export interface InterviewFeedback {
   rating: string;
   userAns: string;
   userEmail: string;
+  videoUrl?: string | null;
+  confidenceScore?: string | null;
+  nervousnessScore?: string | null;
+  nervousnessLevel?: string | null;
+  behaviorJson?: string | null;
+}
+
+export interface BehaviorReport {
+  confidence_score: number;
+  nervousness_score: number;
+  nervousness_level: string;
+  stress_events: { timestamp: number; reason: string; intensity: number }[];
+  visual_summary: Record<string, unknown>;
+  audio_summary: Record<string, unknown>;
 }
 export interface jobResponse {
   createdAt: string | null;

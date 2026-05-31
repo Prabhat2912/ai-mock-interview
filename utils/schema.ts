@@ -21,4 +21,9 @@ export const UserAns = pgTable("userAns", {
   rating: varchar("rating"),
   userEmail: varchar("userEmail"),
   createdAt: varchar("createdAt"),
+  videoUrl: text("videoUrl"),
+  confidenceScore: varchar("confidenceScore"),
+  nervousnessScore: varchar("nervousnessScore"),
+  nervousnessLevel: varchar("nervousnessLevel"),
+  behaviorJson: text("behaviorJson"),
 });
