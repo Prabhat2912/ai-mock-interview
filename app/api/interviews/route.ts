@@ -38,7 +38,22 @@ export async function POST(req: Request) {
   const count = Number(questionCount) || 5;
   const prompt = `Job Position: ${role} Job Description: ${description} Years of Experience: ${exp}\nGenerate exactly ${count} interview questions with answers as a JSON array. Each item must be an object with fields "question" and "answer". Respond with JSON only, no prose.`;
 
-  const questions = await generateJSON<{ question: string; answer: string }[]>(prompt);
+  let questions: { question: string; answer: string }[];
+  try {
+    questions = await generateJSON<{ question: string; answer: string }[]>(prompt);
+  } catch (e: unknown) {
+    const err = e as { status?: number; message?: string };
+    if (err?.status === 429) {
+      return NextResponse.json(
+        { error: "AI quota exceeded. Please try again later or use a different API key." },
+        { status: 429 }
+      );
+    }
+    return NextResponse.json(
+      { error: "Failed to generate questions", detail: err?.message ?? String(e) },
+      { status: 502 }
+    );
+  }
 
   const mockId = uuidv4();
   await db.insert(MockInterview).values({
