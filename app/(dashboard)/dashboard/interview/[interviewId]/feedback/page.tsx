@@ -15,6 +15,7 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
   const [resolvedParams, setResolvedParams] = useState<Params | null>(null);
   const [results, setResults] = useState<InterviewFeedback[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [behaviorPending, setBehaviorPending] = useState(false);
 
   useEffect(() => {
     params.then((data) => setResolvedParams(data));
@@ -31,10 +32,16 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
     }
 
     try {
-      const res = await fetch(`/api/answers/${resolvedParams.interviewId}`);
+      const res = await fetch(`/api/answers/${resolvedParams.interviewId}`, {
+        cache: "no-store",
+      });
       if (!res.ok) throw new Error(`status ${res.status}`);
       const data = (await res.json()) as InterviewFeedback[];
       setResults(data);
+      const pending = data.some(
+        (r) => r.videoUrl && !r.behaviorJson && !r.confidenceScore
+      );
+      setBehaviorPending(pending);
     } catch (error) {
       console.error("Error fetching feedback:", error);
       setResults([]);
@@ -46,6 +53,15 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
   useEffect(() => {
     if (resolvedParams) getResults();
   }, [resolvedParams]);
+
+  // Poll every 15s while behavior results are still pending.
+  useEffect(() => {
+    if (!behaviorPending) return;
+    const id = setInterval(() => {
+      getResults();
+    }, 15000);
+    return () => clearInterval(id);
+  }, [behaviorPending, resolvedParams]);
 
   const getAvgRating = () => {
     if (results?.length) {
@@ -105,6 +121,14 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
           ? "No feedback found"
           : "Loading feedbacks..."}
       </h2>
+      {behaviorPending && (
+        <div className="mt-3 p-3 rounded-lg border border-amber-400 bg-amber-50 text-amber-900 text-sm flex items-center gap-2">
+          <span className="inline-block h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+          Behavior analysis is running in the background. This page will update
+          automatically when the results are ready (can take a few minutes per
+          answer).
+        </div>
+      )}
       <div className="h-[600px] p-4 border rounded-lg my-4 overflow-y-auto">
         {loading ? (
           <div className="w-full h-full flex flex-col gap-4 justify-center items-center">

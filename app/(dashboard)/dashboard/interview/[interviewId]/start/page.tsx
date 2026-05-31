@@ -2,8 +2,12 @@
 "use client";
 import { jobResponse, mockInterviewQuestionsRes } from "@/types/types";
 import React, { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import QuestionSection from "./_components/QuestionSection";
-import RecordAnsSection from "./_components/RecordAnsSection";
+import type RecordAnsSectionType from "./_components/RecordAnsSection";
+const RecordAnsSection = dynamic<
+  React.ComponentProps<typeof RecordAnsSectionType>
+>(() => import("./_components/RecordAnsSection"), { ssr: false });
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -46,6 +50,19 @@ const Start = ({ params }: { params: Promise<Params> }) => {
   useEffect(() => {
     if (resolvedParams) getInterviewDetails();
   }, [resolvedParams]);
+
+  const triggerBatchAnalysis = () => {
+    const mockId = interviewData[0]?.mockId;
+    if (!mockId) return;
+    // Fire-and-forget; backend may take several minutes. Feedback page polls for results.
+    fetch("/api/answers/analyze-batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mockId }),
+      keepalive: true,
+    }).catch((err) => console.warn("Batch analysis kickoff failed", err));
+    toast.info("Behavior analysis started in the background. It will appear on the feedback page when ready.");
+  };
 
   return (
     <div className="p-4 min-h-[800px] transition-all flex flex-col gap-4 ">
@@ -94,7 +111,7 @@ const Start = ({ params }: { params: Promise<Params> }) => {
           <Link
             href={`/dashboard/interview/${resolvedParams?.interviewId}/feedback`}
           >
-            <Button>End Interview</Button>
+            <Button onClick={triggerBatchAnalysis}>End Interview</Button>
           </Link>
         )}
       </div>

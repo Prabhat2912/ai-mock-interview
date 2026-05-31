@@ -3,9 +3,8 @@
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import React, { useEffect, useRef, useState } from "react";
-import Webcam from "react-webcam";
 import useSpeechToText from "react-hook-speech-to-text";
-import { Loader2, Mic, StopCircle } from "lucide-react";
+import { Loader2, Mic, StopCircle, Video } from "lucide-react";
 import { toast } from "sonner";
 import { jobResponse, mockInterviewQuestionsRes } from "@/types/types";
 import { uploadVideoToCloudinary } from "@/utils/cloudinary";
@@ -34,12 +33,13 @@ const RecordAnsSection = ({
 
   const [userAnswer, setUserAnswer] = useState("");
   const [loading, setLoading] = useState(false);
-  const [webcamOn, setWebcamOn] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
-  const webcamRef = useRef<Webcam | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
-  // capture the latest transcript at stop time without re-running save effect
   const latestAnswerRef = useRef("");
 
   useEffect(() => {
@@ -50,15 +50,69 @@ const RecordAnsSection = ({
     latestAnswerRef.current = transcript;
   }, [results]);
 
-  const startMediaRecorder = () => {
-    const stream = webcamRef.current?.stream;
-    if (!stream) {
-      toast.error("Webcam stream not ready yet, try again in a second.");
+  // Reset on question switch.
+  useEffect(() => {
+    if (isRecording) {
+      try {
+        stopSpeechToText();
+      } catch {}
+    }
+    const rec = mediaRecorderRef.current;
+    if (rec && rec.state !== "inactive") {
+      try {
+        rec.stop();
+      } catch {}
+    }
+    mediaRecorderRef.current = null;
+    recordedChunksRef.current = [];
+    setResults([]);
+    setUserAnswer("");
+    latestAnswerRef.current = "";
+    setLoading(false);
+  }, [activeQuestionIndex]);
+
+  const startCamera = async () => {
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: true,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+      setCameraReady(true);
+    } catch (err) {
+      console.error("getUserMedia failed", err);
+      const msg = (err as Error)?.message || String(err);
+      setCameraError(
+        `Camera access failed: ${msg}. Click the lock icon in the URL bar, allow Camera + Microphone, and reload.`
+      );
+      setCameraReady(false);
+    }
+  };
+
+  useEffect(() => {
+    startCamera();
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    };
+  }, []);
+
+  const startMediaRecorder = (): boolean => {
+    const stream = streamRef.current;
+    if (!stream || stream.getVideoTracks().length === 0) {
+      toast.error("Camera not ready yet.");
       return false;
     }
     recordedChunksRef.current = [];
     const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
       ? "video/webm;codecs=vp9,opus"
+      : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+      ? "video/webm;codecs=vp8,opus"
       : "video/webm";
     const rec = new MediaRecorder(stream, { mimeType });
     rec.ondataavailable = (e) => {
@@ -83,8 +137,9 @@ const RecordAnsSection = ({
 
   const handleRecordClick = async () => {
     if (isRecording) {
-      // Stop branch — capture both transcript and video, then upload + save.
-      stopSpeechToText();
+      try {
+        stopSpeechToText();
+      } catch {}
       setLoading(true);
       try {
         const blob = await stopMediaRecorderAndGetBlob();
@@ -126,46 +181,64 @@ const RecordAnsSection = ({
         setUserAnswer("");
         latestAnswerRef.current = "";
         setResults([]);
-        setWebcamOn(false);
         setLoading(false);
       }
     } else {
-      // Start branch — turn on webcam, then start MediaRecorder + speech-to-text.
+      if (!cameraReady) {
+        toast.error("Camera not ready. Allow permission and wait a moment.");
+        return;
+      }
       setUserAnswer("");
       latestAnswerRef.current = "";
-      setWebcamOn(true);
-      // Wait a tick for Webcam to acquire the stream before starting MediaRecorder.
-      setTimeout(() => {
-        const ok = startMediaRecorder();
-        if (ok) startSpeechToText();
-        else setWebcamOn(false);
-      }, 800);
+      setResults([]);
+      // Wait so previous SpeechRecognition fully releases before restarting.
+      await new Promise((r) => setTimeout(r, 400));
+      const ok = startMediaRecorder();
+      if (!ok) return;
+      try {
+        startSpeechToText();
+      } catch (err) {
+        console.error("startSpeechToText failed", err);
+        toast.error("Could not start speech recognition. Click Record again.");
+      }
     }
   };
 
   return (
     <div className="flex flex-col justify-center items-center">
-      <div className="flex flex-col bg-black justify-center items-center rounded-lg p-5 mt-20">
-        {webcamOn ? (
-          <Webcam
-            ref={webcamRef}
-            audio
-            muted
-            mirrored
-            videoConstraints={{ facingMode: "user" }}
-            style={{ height: 300, width: "100%", zIndex: 50 }}
-          />
-        ) : (
-          <Image
-            src="/webcam.png"
-            alt="Record Answer"
-            width={200}
-            height={200}
-          />
+      <div className="flex flex-col bg-black justify-center items-center rounded-lg p-5 mt-20 relative">
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          style={{
+            height: 300,
+            width: "100%",
+            transform: "scaleX(-1)",
+            display: cameraReady ? "block" : "none",
+          }}
+        />
+        {!cameraReady && (
+          <div className="flex flex-col items-center gap-3 p-4">
+            <Image src="/webcam.png" alt="Camera" width={150} height={150} />
+            {cameraError ? (
+              <>
+                <p className="text-xs text-red-400 max-w-xs text-center">
+                  {cameraError}
+                </p>
+                <Button size="sm" variant="secondary" onClick={startCamera}>
+                  <Video className="h-4 w-4 mr-1" /> Retry camera
+                </Button>
+              </>
+            ) : (
+              <p className="text-xs text-gray-400">Requesting camera…</p>
+            )}
+          </div>
         )}
       </div>
       <Button
-        disabled={loading}
+        disabled={loading || !cameraReady}
         variant={"outline"}
         onClick={handleRecordClick}
         className={`mt-10 ${!isRecording ? "text-primary" : "text-red-500"}`}
