@@ -9,7 +9,7 @@ import type { BehaviorReport } from "@/types/types";
 
 // Allow long-running route (Vercel hobby: 60s; locally Node has no cap).
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 type BatchResultItem = {
