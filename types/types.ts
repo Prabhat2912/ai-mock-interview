@@ -27,7 +27,14 @@ export interface BehaviorReport {
   nervousness_level: string;
   stress_events: { timestamp: number; reason: string; intensity: number }[];
   visual_summary: Record<string, unknown>;
-  audio_summary: Record<string, unknown>;
+  audio_summary: {
+    estimated_wpm?: number;
+    jitter?: number;
+    shimmer?: number;
+    pause_duration_sec?: number;
+    speech_ratio?: number;
+    [key: string]: unknown;
+  };
 }
 export interface jobResponse {
   createdAt: string | null;

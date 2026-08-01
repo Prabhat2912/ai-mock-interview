@@ -186,7 +186,7 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
         ) : sessions && sessions.length > 0 ? (
           sessions.map((session, sessionIdx) => {
             const summary = parseBehavioralSummary(
-              session.sessionInfo?.behavioralSummary,
+              session.sessionInfo?.behavioralSummary ?? null,
             );
             const isExpanded = expandedSessions.has(session.sessionId);
 
