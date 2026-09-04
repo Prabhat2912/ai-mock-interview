@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { and, eq, isNull, isNotNull } from "drizzle-orm";
+import { and, eq, isNull, isNotNull, like, or } from "drizzle-orm";
 import { db } from "@/utils/db";
 import { UserAns, InterviewSession } from "@/utils/schema";
 import { generateJSON } from "@/utils/gemini";
@@ -19,6 +19,11 @@ type BatchResultItem = {
   error?: string;
 };
 
+// Must stay <= the Python backend's MAX_BATCH_ITEMS (default 3). Oversized
+// batches get a 413 from the backend and NOTHING is analyzed, so slice here
+// and let the feedback page retry the remainder.
+const BACKEND_MAX_BATCH_ITEMS = 3;
+
 export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId)
@@ -36,18 +41,24 @@ export async function POST(req: Request) {
     );
   }
 
+  // Unanalyzed rows PLUS rows marked with a previous failure ({"error":...}),
+  // so the feedback page "Retry" button can re-attempt them.
+  const needsAnalysis = or(
+    isNull(UserAns.behaviorJson),
+    like(UserAns.behaviorJson, '%"error"%'),
+  );
   // Filter by session if provided, otherwise use mockId only (backward compatibility)
   const whereConditions = interviewSessionId
     ? and(
         eq(UserAns.mockIdRef, mockId),
         eq(UserAns.interviewSessionId, interviewSessionId),
         isNotNull(UserAns.videoUrl),
-        isNull(UserAns.behaviorJson),
+        needsAnalysis,
       )
     : and(
         eq(UserAns.mockIdRef, mockId),
         isNotNull(UserAns.videoUrl),
-        isNull(UserAns.behaviorJson),
+        needsAnalysis,
       );
 
   const rows = await db
@@ -67,6 +78,11 @@ export async function POST(req: Request) {
     });
   }
 
+  // Backend rejects batches larger than its MAX_BATCH_ITEMS with 413 and
+  // analyzes nothing — process in slices so one big interview can't wedge.
+  const batch = items.slice(0, BACKEND_MAX_BATCH_ITEMS);
+  const deferred = items.length - batch.length;
+
   let payload: { results: BatchResultItem[] };
   try {
     const res = await fetch(
@@ -74,7 +90,7 @@ export async function POST(req: Request) {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items: batch }),
       },
     );
     if (!res.ok) {
@@ -92,10 +108,26 @@ export async function POST(req: Request) {
   }
 
   let updated = 0;
+  let failed = 0;
   const behaviorReports: BehaviorReport[] = [];
 
   for (const r of payload.results || []) {
-    if (!r.ok || !r.report) continue;
+    if (!r.ok || !r.report) {
+      // Persist a failure marker. Without it the row keeps
+      // (videoUrl && !behaviorJson && !confidenceScore) forever and the
+      // feedback page polls every 15s indefinitely with no way out.
+      // The marker stops polling; scores stay unset so averages ignore it.
+      failed += 1;
+      await db
+        .update(UserAns)
+        .set({
+          behaviorJson: JSON.stringify({
+            error: r.error || "Behavior analysis failed",
+          }),
+        })
+        .where(eq(UserAns.id, r.id));
+      continue;
+    }
     await db
       .update(UserAns)
       .set({
@@ -233,7 +265,9 @@ Provide a JSON response with:
   return NextResponse.json({
     ok: true,
     analyzed: updated,
+    failed,
     total: items.length,
+    deferred,
     behavioralSummary,
     overallNervousnessLevel,
     overallConfidenceScore,

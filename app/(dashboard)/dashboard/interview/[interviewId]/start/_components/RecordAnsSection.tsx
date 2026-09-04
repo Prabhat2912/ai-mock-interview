@@ -43,6 +43,29 @@ const RecordAnsSection = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const latestAnswerRef = useRef("");
+  const autoStopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Always-callable ref to the stop routine so the auto-stop timer never
+  // captures a stale `isRecording` closure.
+  const stopAndSaveRef = useRef<(autoStopped?: boolean) => Promise<void>>(
+    async () => {},
+  );
+
+  // Backend behavior-analysis caps (must match the Flask service limits).
+  const MAX_VIDEO_SEC = parseInt(
+    process.env.NEXT_PUBLIC_MAX_VIDEO_DURATION_SEC || "60",
+    10,
+  );
+  const BEHAVIOR_MAX_MB = parseInt(
+    process.env.NEXT_PUBLIC_BEHAVIOR_MAX_MB || "25",
+    10,
+  );
+
+  const clearAutoStop = () => {
+    if (autoStopRef.current) {
+      clearTimeout(autoStopRef.current);
+      autoStopRef.current = null;
+    }
+  };
 
   useEffect(() => {
     const transcript = (results as SpeechResult[])
@@ -59,6 +82,7 @@ const RecordAnsSection = ({
         stopSpeechToText();
       } catch {}
     }
+    clearAutoStop();
     const rec = mediaRecorderRef.current;
     if (rec && rec.state !== "inactive") {
       try {
@@ -72,6 +96,9 @@ const RecordAnsSection = ({
     latestAnswerRef.current = "";
     setLoading(false);
   }, [activeQuestionIndex]);
+
+  // Clear the auto-stop timer on unmount.
+  useEffect(() => () => clearAutoStop(), []);
 
   const startCamera = async () => {
     setCameraError(null);
@@ -139,55 +166,73 @@ const RecordAnsSection = ({
       rec.stop();
     });
 
+  const stopAndSave = async (autoStopped = false) => {
+    try {
+      stopSpeechToText();
+    } catch {}
+    clearAutoStop();
+    setLoading(true);
+    try {
+      const blob = await stopMediaRecorderAndGetBlob();
+      const answer = latestAnswerRef.current;
+
+      if (!answer || answer.length < 10) {
+        toast.error("Answer too short. Please record a longer response.");
+        return;
+      }
+
+      let videoUrl: string | undefined;
+      if (blob && blob.size > 0) {
+        const sizeMb = blob.size / (1024 * 1024);
+        if (sizeMb > BEHAVIOR_MAX_MB) {
+          toast.warning(
+            `Video is ~${sizeMb.toFixed(1)}MB; behavior analysis caps at ` +
+              `${BEHAVIOR_MAX_MB}MB and may be skipped. Answer is still saved.`,
+          );
+        }
+        try {
+          videoUrl = await uploadVideoToCloudinary(blob);
+        } catch (err) {
+          console.error(err);
+          toast.warning("Video upload failed; saving answer without video.");
+        }
+      }
+
+      const res = await fetch("/api/answers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mockId: interViewData[0]?.mockId,
+          interviewSessionId,
+          question: question[activeQuestionIndex].question,
+          correctAns: question[activeQuestionIndex].answer,
+          userAns: answer,
+          videoUrl,
+        }),
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      toast.success(
+        autoStopped
+          ? `Recording auto-stopped at ${MAX_VIDEO_SEC}s. Answer saved with AI + behavior analysis.`
+          : "Answer saved with AI + behavior analysis.",
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error("Something went wrong while saving the answer.");
+    } finally {
+      setUserAnswer("");
+      latestAnswerRef.current = "";
+      setResults([]);
+      setLoading(false);
+    }
+  };
+  // Keep the ref fresh every render for the auto-stop timer.
+  stopAndSaveRef.current = stopAndSave;
+
   const handleRecordClick = async () => {
     if (isRecording) {
-      try {
-        stopSpeechToText();
-      } catch {}
-      setLoading(true);
-      try {
-        const blob = await stopMediaRecorderAndGetBlob();
-        const answer = latestAnswerRef.current;
-
-        if (!answer || answer.length < 10) {
-          toast.error("Answer too short. Please record a longer response.");
-          return;
-        }
-
-        let videoUrl: string | undefined;
-        if (blob && blob.size > 0) {
-          try {
-            videoUrl = await uploadVideoToCloudinary(blob);
-          } catch (err) {
-            console.error(err);
-            toast.warning("Video upload failed; saving answer without video.");
-          }
-        }
-
-        const res = await fetch("/api/answers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            mockId: interViewData[0]?.mockId,
-            interviewSessionId,
-            question: question[activeQuestionIndex].question,
-            correctAns: question[activeQuestionIndex].answer,
-            userAns: answer,
-            videoUrl,
-          }),
-        });
-
-        if (!res.ok) throw new Error(await res.text());
-        toast.success("Answer saved with AI + behavior analysis.");
-      } catch (err) {
-        console.error(err);
-        toast.error("Something went wrong while saving the answer.");
-      } finally {
-        setUserAnswer("");
-        latestAnswerRef.current = "";
-        setResults([]);
-        setLoading(false);
-      }
+      await stopAndSaveRef.current(false);
     } else {
       if (!cameraReady) {
         toast.error("Camera not ready. Allow permission and wait a moment.");
@@ -206,6 +251,17 @@ const RecordAnsSection = ({
         console.error("startSpeechToText failed", err);
         toast.error("Could not start speech recognition. Click Record again.");
       }
+      // Backend rejects videos longer than MAX_VIDEO_SEC — auto-stop so the
+      // clip stays analyzable instead of failing server-side later.
+      clearAutoStop();
+      autoStopRef.current = setTimeout(() => {
+        if (mediaRecorderRef.current?.state !== "inactive") {
+          toast.info(
+            `Reached the ${MAX_VIDEO_SEC}s recording limit — stopping automatically.`,
+          );
+          void stopAndSaveRef.current(true);
+        }
+      }, MAX_VIDEO_SEC * 1000);
     }
   };
 

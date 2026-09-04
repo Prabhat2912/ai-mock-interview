@@ -35,6 +35,8 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
   const [sessions, setSessions] = useState<SessionData[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [behaviorPending, setBehaviorPending] = useState(false);
+  const [behaviorFailed, setBehaviorFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(
     new Set(),
   );
@@ -80,6 +82,18 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
         ),
       );
       setBehaviorPending(pending);
+      // Rows whose behaviorJson is a failure marker ({"error":...}) — the
+      // route persisted these instead of leaving the page polling forever.
+      const failed = data.some((session) =>
+        session.answers.some(
+          (r) =>
+            r.videoUrl &&
+            !r.confidenceScore &&
+            !!r.behaviorJson &&
+            r.behaviorJson.includes('"error"'),
+        ),
+      );
+      setBehaviorFailed(failed);
     } catch (error) {
       console.error("Error fetching feedback:", error);
       setSessions([]);
@@ -100,6 +114,44 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
     }, 15000);
     return () => clearInterval(id);
   }, [behaviorPending, resolvedParams]);
+
+  // Re-fire analysis for sessions still missing results (e.g. backend was
+  // cold or a clip was rejected). Rows already analyzed are skipped by the
+  // API; rows with a previous failure marker are retried.
+  const retryAnalysis = async () => {
+    if (
+      !resolvedParams?.interviewId ||
+      typeof resolvedParams.interviewId !== "string"
+    )
+      return;
+    setRetrying(true);
+    try {
+      const needsWork = (r: InterviewFeedback) =>
+        r.videoUrl &&
+        !r.confidenceScore &&
+        (!r.behaviorJson || r.behaviorJson.includes('"error"'));
+      const targetSessions = (sessions || []).filter((s) =>
+        s.answers.some(needsWork),
+      );
+      const targets =
+        targetSessions.length > 0 ? targetSessions : [{ sessionId: "" }];
+      await Promise.all(
+        targets.map((s) =>
+          fetch("/api/answers/analyze-batch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              mockId: resolvedParams.interviewId,
+              interviewSessionId: (s as SessionData).sessionId || undefined,
+            }),
+          }).catch(() => null),
+        ),
+      );
+      await getResults();
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   const toggleSession = (sessionId: string) => {
     const newSet = new Set(expandedSessions);
@@ -167,9 +219,37 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
       {behaviorPending && (
         <div className="mt-3 p-3 rounded-lg border border-amber-400 bg-amber-50 text-amber-900 text-sm flex items-center gap-2">
           <span className="inline-block h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-          Behavior analysis is running in the background. This page will update
-          automatically when the results are ready (can take a few minutes per
-          answer).
+          <span className="flex-1">
+            Behavior analysis is running in the background. This page will
+            update automatically when the results are ready (can take a few
+            minutes per answer).
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={retrying}
+            onClick={retryAnalysis}
+          >
+            {retrying ? "Retrying…" : "Retry now"}
+          </Button>
+        </div>
+      )}
+
+      {!behaviorPending && behaviorFailed && (
+        <div className="mt-3 p-3 rounded-lg border border-red-300 bg-red-50 text-red-900 text-sm flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span className="flex-1">
+            Behavior analysis couldn&apos;t finish for some answers (clip too
+            large, no face detected, or the backend was waking up).
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={retrying}
+            onClick={retryAnalysis}
+          >
+            {retrying ? "Retrying…" : "Retry analysis"}
+          </Button>
         </div>
       )}
 
