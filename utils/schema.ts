@@ -14,6 +14,7 @@ export const MockInterview = pgTable("mockInterview", {
 export const UserAns = pgTable("userAns", {
   id: serial("id").primaryKey(),
   mockIdRef: varchar("mockId").notNull(),
+  interviewSessionId: varchar("interviewSessionId"),
   question: varchar("question").notNull(),
   correctAns: varchar("correctAns").notNull(),
   userAns: text("userAns"),
@@ -21,4 +22,21 @@ export const UserAns = pgTable("userAns", {
   rating: varchar("rating"),
   userEmail: varchar("userEmail"),
   createdAt: varchar("createdAt"),
+  videoUrl: text("videoUrl"),
+  confidenceScore: varchar("confidenceScore"),
+  nervousnessScore: varchar("nervousnessScore"),
+  nervousnessLevel: varchar("nervousnessLevel"),
+  behaviorJson: text("behaviorJson"),
+});
+
+export const InterviewSession = pgTable("interviewSession", {
+  id: serial("id").primaryKey(),
+  sessionId: varchar("sessionId").notNull().unique(),
+  mockIdRef: varchar("mockId").notNull(),
+  userEmail: varchar("userEmail").notNull(),
+  startedAt: varchar("startedAt").notNull(),
+  endedAt: varchar("endedAt"),
+  behavioralSummary: text("behavioralSummary"),
+  overallNervousnessLevel: varchar("overallNervousnessLevel"),
+  overallConfidenceScore: varchar("overallConfidenceScore"),
 });

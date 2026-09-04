@@ -2,9 +2,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { jobResponse } from "@/types/types";
-import { db } from "@/utils/db";
-import { MockInterview } from "@/utils/schema";
-import { eq } from "drizzle-orm";
 import { Lightbulb, WebcamIcon } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
@@ -17,24 +14,21 @@ interface Params {
 const Interview = ({ params }: { params: Promise<Params> }) => {
   const [resolvedParams, setResolvedParams] = useState<Params | null>(null);
   const [camEnabled, setCamEnabled] = useState(false);
+  const [interviewData, setInterviewData] = useState<jobResponse[]>([]);
+
   useEffect(() => {
     params.then((data) => setResolvedParams(data));
   }, [params]);
 
-  const [interviewData, setInterviewData] = useState<jobResponse[]>([]);
-  const getInterviewDetails = async () => {
-    if (resolvedParams?.interviewId) {
-      const result = await db
-        .select()
-        .from(MockInterview)
-        .where(eq(MockInterview.mockId, resolvedParams.interviewId));
-
-      if (result) {
-        setInterviewData(result as jobResponse[]);
-      }
-    }
-  };
   useEffect(() => {
+    const getInterviewDetails = async () => {
+      if (!resolvedParams?.interviewId) return;
+      const res = await fetch(`/api/interviews/${resolvedParams.interviewId}`);
+      if (res.ok) {
+        const data = (await res.json()) as jobResponse[];
+        setInterviewData(data);
+      }
+    };
     getInterviewDetails();
   }, [resolvedParams]);
 

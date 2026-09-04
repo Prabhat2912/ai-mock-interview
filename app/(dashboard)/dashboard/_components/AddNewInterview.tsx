@@ -1,6 +1,5 @@
 "use client";
 import React, { useState } from "react";
-import { v4 as uuidv4 } from "uuid";
 import {
   Dialog,
   DialogContent,
@@ -10,13 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { chatSession } from "@/utils/GeminiAIModel";
 import { toast } from "sonner";
 import { LoaderCircle } from "lucide-react";
-import { db } from "@/utils/db";
-import { MockInterview } from "@/utils/schema";
-import { useUser } from "@clerk/nextjs";
-import moment from "moment";
 import { useRouter } from "next/navigation";
 
 const AddNewInterview = () => {
@@ -25,56 +19,29 @@ const AddNewInterview = () => {
   const [description, setDescription] = useState("");
   const [exp, setExp] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [jsonQuestions, setJsonQuestions] = useState();
-  const { user } = useUser();
   const router = useRouter();
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    console.log(role, description, exp);
-    const InputPrompt = `Job Position: ${role} Job Description: ${description} Years of Exprience:${exp}\ndepends on this information give me ${process.env.NEXT_PUBLIC_QUESTION_COUNT} interview questions with answers in json format\ngive question and answer as json field`;
     try {
-      const result = await chatSession.sendMessage(InputPrompt);
-      console.log(result.response.text());
-      if (result.response) {
-        toast.success("Interview questions generated successfully");
-      }
-      const mockRespJson = result.response
-        .text()
-        .replace(/```json|```/g, "")
-        .trim();
-      setJsonQuestions(JSON.parse(mockRespJson));
-      if (mockRespJson) {
-        const res = await db
-          .insert(MockInterview)
-          .values({
-            jsonMockResp: mockRespJson.toString(),
-            jobPosition: role,
-            jobDescription: description,
-            jobExperience: exp.toString(),
-            createdBy:
-              user?.primaryEmailAddress?.emailAddress?.toString() || "unknown",
-            createdAt: moment().format("YYYY-MM-DD HH:mm:ss"),
-            mockId: uuidv4(),
-          })
-          .returning({ mockId: MockInterview.mockId });
-        console.log(res);
-        if (res) {
-          toast.success("Interview questions saved successfully");
-          router.push(`/dashboard/interview/${res[0].mockId}`);
-        }
-      } else {
-        toast.error("Error in generating interview questions");
-      }
-      console.log(JSON.parse(mockRespJson));
-      if (jsonQuestions) {
-        console.log(JSON.parse(jsonQuestions));
-      } else {
-        console.log("jsonQuestions is undefined");
-      }
+      const res = await fetch("/api/interviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role,
+          description,
+          exp,
+          questionCount: process.env.NEXT_PUBLIC_QUESTION_COUNT,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const { mockId } = (await res.json()) as { mockId: string };
+      toast.success("Interview created");
+      router.push(`/dashboard/interview/${mockId}`);
     } catch (error) {
+      console.error(error);
       toast.error("Error in generating interview questions");
-      console.log(error);
     } finally {
       setLoading(false);
     }
