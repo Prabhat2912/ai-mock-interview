@@ -36,6 +36,7 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
   const [loading, setLoading] = useState(true);
   const [behaviorPending, setBehaviorPending] = useState(false);
   const [behaviorFailed, setBehaviorFailed] = useState(false);
+  const [hasVideoAnswers, setHasVideoAnswers] = useState(true);
   const [retrying, setRetrying] = useState(false);
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(
     new Set(),
@@ -94,6 +95,16 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
         ),
       );
       setBehaviorFailed(failed);
+      // If answers exist but none have a video, behavior analysis can never
+      // run (nothing was recorded/uploaded). Tell the user instead of
+      // showing a mysteriously empty behavior section.
+      const anyVideo = data.some((session) =>
+        session.answers.some((r) => !!r.videoUrl),
+      );
+      const anyAnswers = data.some(
+        (session) => session.answers && session.answers.length > 0,
+      );
+      setHasVideoAnswers(!anyAnswers || anyVideo);
     } catch (error) {
       console.error("Error fetching feedback:", error);
       setSessions([]);
@@ -215,6 +226,19 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
         Congratulations!
       </h2>
       <h2 className="font-bold text-2xl mt-4">Here is your feedback</h2>
+
+      {!loading && !hasVideoAnswers && (
+        <div className="mt-3 p-3 rounded-lg border border-blue-300 bg-blue-50 text-blue-900 text-sm flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>
+            No recorded videos found for this interview, so there&apos;s
+            nothing for behavior analysis. To get confidence/nervousness
+            scores, allow camera + microphone on the start page, record your
+            answer, and make sure you see the &quot;Answer saved&quot; toast
+            before ending the interview.
+          </span>
+        </div>
+      )}
 
       {behaviorPending && (
         <div className="mt-3 p-3 rounded-lg border border-amber-400 bg-amber-50 text-amber-900 text-sm flex items-center gap-2">
