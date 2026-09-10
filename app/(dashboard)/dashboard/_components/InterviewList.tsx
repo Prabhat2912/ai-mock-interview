@@ -16,10 +16,10 @@ const InterviewList = () => {
       if (!res.ok) throw new Error(`status ${res.status}`);
       const data = (await res.json()) as jobResponse[];
       setInterviews(data);
-      if (data.length === 0) toast.info("No interviews found for this user");
+      if (data.length === 0) toast.info("The ledger is empty. Call your first mock above.");
     } catch (error) {
       console.error("Error fetching interviews:", error);
-      toast.error("Failed to fetch interviews");
+      toast.error("The ledger could not be read. Reload and try again.");
       setInterviews([]);
     } finally {
       setLoading(false);
@@ -34,26 +34,43 @@ const InterviewList = () => {
 
   return (
     <div>
-      <h2 className="font-medium text-xl">
-        {!loading && Interviews && Interviews.length > 0
-          ? " Previous Mock Interviews"
-          : "No Previous Mock Interviews"}
-      </h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 my-3">
-        {!loading
-          ? Interviews &&
-            Interviews.length > 0 &&
-            Interviews.map((interview, index) => (
-              <InterviewItemCard interview={interview} key={index} />
-            ))
-          : [1, 2, 3, 4].map((_item, index) => (
-              <div
-                key={index}
-                className="h-[100px] w-full bg-gray-200 animate-pulse rounded-lg "
-              ></div>
-            ))}
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="font-display text-3xl font-semibold uppercase leading-none tracking-tight">
+          The ledger
+        </h2>
+        {!loading && Interviews && Interviews.length > 0 && (
+          <p className="tnum text-sm font-bold text-tungsten">
+            {Interviews.length} {Interviews.length === 1 ? "entry" : "entries"}
+          </p>
+        )}
       </div>
+
+      {loading ? (
+        <ul aria-label="Loading mocks" className="mt-4">
+          {[1, 2, 3].map((i) => (
+            <li
+              key={i}
+              className="h-[92px] animate-pulse border-t border-stage/15 bg-paper-deep/50 last:border-b"
+            />
+          ))}
+        </ul>
+      ) : Interviews && Interviews.length > 0 ? (
+        <ul className="mt-4">
+          {Interviews.map((interview, index) => (
+            <InterviewItemCard interview={interview} key={index} />
+          ))}
+        </ul>
+      ) : (
+        <div className="mt-4 border border-dashed border-stage/40 px-6 py-12 text-center">
+          <p className="font-display text-2xl font-semibold uppercase tracking-wide">
+            A blank call sheet
+          </p>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-tungsten">
+            No performances yet. Call your first mock above — thirty seconds
+            of writing, then you are on.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

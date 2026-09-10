@@ -1,7 +1,8 @@
 "use client";
 import { mockInterviewQuestionsRes } from "@/types/types";
-import { Lightbulb, Volume2 } from "lucide-react";
+import { Volume2 } from "lucide-react";
 import React, { useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 const QuestionSection = ({
   question,
@@ -14,12 +15,10 @@ const QuestionSection = ({
 }) => {
   const textToSpeech = (text: string) => {
     if ("speechSynthesis" in window) {
-      // Cancel any ongoing speech before starting new one
       window.speechSynthesis.cancel();
-      const speech = new SpeechSynthesisUtterance(text);
-      window.speechSynthesis.speak(speech);
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
     } else {
-      alert("Your browser doesn't support text to speech.");
+      alert("Your browser does not read text aloud.");
     }
   };
 
@@ -33,40 +32,51 @@ const QuestionSection = ({
 
   return (
     question.length > 0 && (
-      <div className="p-5 border rounded-lg">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-          {question &&
-            question.map((q, index) => (
-              <div key={index} onClick={() => setActiveQuestionIndex(index)}>
-                <h2
-                  className={`p-2 text-center cursor-pointer text-xs md:text-sm lg:text-base ${
-                    activeQuestionIndex === index && "bg-primary text-white"
-                  } rounded-full`}
-                >
-                  Question #{index + 1}
-                </h2>
-              </div>
-            ))}
+      <div className="flex h-full flex-col border border-stage/25 bg-paper">
+        <div className="flex items-center justify-between border-b border-stage/20 px-5 py-3.5">
+          <p className="tnum font-display text-sm font-semibold uppercase tracking-[0.2em] text-tungsten">
+            Cue {activeQuestionIndex + 1} of {question.length}
+          </p>
+          <button
+            onClick={() => textToSpeech(question[activeQuestionIndex].question)}
+            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-stage transition-colors hover:text-marquee-deep"
+          >
+            <Volume2 className="h-4 w-4" aria-hidden /> Hear it
+          </button>
         </div>
-        <h2 className="my-5 text-base md:text-lg">
-          {question[activeQuestionIndex].question}
-        </h2>
-        <Volume2
-          className="cursor-pointer"
-          onClick={() => {
-            textToSpeech(question[activeQuestionIndex].question);
-            console.log("clicked");
-          }}
-        />
-        <div className="border rounded-lg p-5 bg-blue-100 mt-20">
-          <h2 className="flex gap-2 items-center text-primary">
-            <Lightbulb />
-            <strong>Note:</strong>
-          </h2>
-          <h2 className="text-sm my-2 text-primary">
-            {process.env.NEXT_PUBLIC_QUESTION_NOTE}
-          </h2>
+
+        <ol className="flex flex-wrap gap-2 px-5 pt-4">
+          {question.map((q, index) => (
+            <li key={index}>
+              <button
+                onClick={() => setActiveQuestionIndex(index)}
+                aria-current={activeQuestionIndex === index ? "true" : undefined}
+                aria-label={`Go to cue ${index + 1}`}
+                className={cn(
+                  "tnum px-3 py-1.5 font-display text-sm font-semibold tracking-[0.12em] transition-colors",
+                  activeQuestionIndex === index
+                    ? "bg-stage text-paper"
+                    : index < activeQuestionIndex
+                      ? "bg-paper-deep text-stage hover:bg-paper-line"
+                      : "border border-stage/25 text-tungsten hover:border-stage hover:text-stage"
+                )}
+              >
+                Q{index + 1}
+              </button>
+            </li>
+          ))}
+        </ol>
+
+        <div className="m-5 mb-0 flex-1 bg-stage p-5 text-paper sm:p-6">
+          <p className="text-base font-medium leading-relaxed sm:text-lg">
+            {question[activeQuestionIndex].question}
+          </p>
         </div>
+
+        <p className="m-5 mt-4 bg-paper-deep/60 p-4 text-sm leading-relaxed text-stage/80">
+          {process.env.NEXT_PUBLIC_QUESTION_NOTE ||
+            "Work point, reason, example. Forty-five to sixty seconds, then stop and save."}
+        </p>
       </div>
     )
   );
