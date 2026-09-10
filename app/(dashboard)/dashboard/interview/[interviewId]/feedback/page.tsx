@@ -7,9 +7,16 @@ import {
 } from "@/components/ui/collapsible";
 import { Params } from "next/dist/server/request/params";
 import { InterviewFeedback } from "@/types/types";
-import { ChevronsUpDown, AlertCircle, ChevronDown } from "lucide-react";
+import {
+  ArrowLeft,
+  CircleAlert,
+  ChevronDown,
+  ChevronsUpDown,
+  RefreshCw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 interface SessionSummary {
   overall_assessment: string;
@@ -57,18 +64,13 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
     }
 
     try {
-      // First, assign session IDs to any legacy answers (without session ID)
       try {
         await fetch("/api/answers/assign-session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mockId: resolvedParams.interviewId }),
-        }).catch(() => {
-          // Silently ignore if this fails - it's just for legacy data
-        });
-      } catch {
-        // Ignore errors in legacy session assignment
-      }
+        }).catch(() => {});
+      } catch {}
 
       const res = await fetch(`/api/answers/${resolvedParams.interviewId}`, {
         cache: "no-store",
@@ -83,8 +85,6 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
         ),
       );
       setBehaviorPending(pending);
-      // Rows whose behaviorJson is a failure marker ({"error":...}) — the
-      // route persisted these instead of leaving the page polling forever.
       const failed = data.some((session) =>
         session.answers.some(
           (r) =>
@@ -117,7 +117,6 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
     if (resolvedParams) getResults();
   }, [resolvedParams]);
 
-  // Poll every 15s while behavior results are still pending.
   useEffect(() => {
     if (!behaviorPending) return;
     const id = setInterval(() => {
@@ -126,9 +125,6 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
     return () => clearInterval(id);
   }, [behaviorPending, resolvedParams]);
 
-  // Re-fire analysis for sessions still missing results (e.g. backend was
-  // cold or a clip was rejected). Rows already analyzed are skipped by the
-  // API; rows with a previous failure marker are retried.
   const retryAnalysis = async () => {
     if (
       !resolvedParams?.interviewId ||
@@ -190,7 +186,7 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
       .map((r) => parseFloat(r.confidenceScore || ""))
       .filter((n) => !Number.isNaN(n));
     if (!vals.length) return null;
-    return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2);
+    return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
   };
 
   const avgNervousness = (answers: InterviewFeedback[]) => {
@@ -198,7 +194,7 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
       .map((r) => parseFloat(r.nervousnessScore || ""))
       .filter((n) => !Number.isNaN(n));
     if (!vals.length) return null;
-    return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2);
+    return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
   };
 
   const formatDate = (dateStr: string) => {
@@ -220,12 +216,26 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
     }
   };
 
+  const allAnswers = (sessions || []).flatMap((s) => s.answers);
+  const overallAvg = allAnswers.length
+    ? (
+        allAnswers.reduce((a, c) => a + parseFloat(c.rating || "0"), 0) /
+        allAnswers.length
+      ).toFixed(1)
+    : null;
+
   return (
-    <div className="flex flex-col p-4">
-      <h2 className="text-green-500 font-bold text-2xl mt-4">
-        Congratulations!
-      </h2>
-      <h2 className="font-bold text-2xl mt-4">Here is your feedback</h2>
+    <div className="py-8">
+      <div className="flex flex-col gap-4 bg-stage px-6 py-7 text-paper sm:flex-row sm:items-end sm:justify-between sm:px-8">
+        <h1 className="font-display text-4xl font-bold uppercase leading-none tracking-tight sm:text-5xl">
+          Session report
+        </h1>
+        {overallAvg && (
+          <p className="stamp rotate-[-4deg] border-marquee-bright text-marquee-bright">
+            <span className="tnum">{overallAvg} / 5</span>
+          </p>
+        )}
+      </div>
 
       {!loading && !hasVideoAnswers && (
         <div className="mt-3 p-3 rounded-lg border border-blue-300 bg-blue-50 text-blue-900 text-sm flex items-center gap-2">
@@ -241,16 +251,16 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
       )}
 
       {behaviorPending && (
-        <div className="mt-3 p-3 rounded-lg border border-amber-400 bg-amber-50 text-amber-900 text-sm flex items-center gap-2">
-          <span className="inline-block h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-          <span className="flex-1">
-            Behavior analysis is running in the background. This page will
-            update automatically when the results are ready (can take a few
-            minutes per answer).
+        <div className="mt-4 flex items-center gap-3 border border-marquee-deep/50 bg-marquee/10 p-4 text-sm">
+          <span aria-hidden className="h-2.5 w-2.5 shrink-0 animate-lamp rounded-full bg-marquee" />
+          <span className="flex-1 font-medium">
+            Presence readings are still developing backstage. This page
+            refreshes itself when they land.
           </span>
           <Button
             size="sm"
             variant="outline"
+            className="rounded-none border-stage/40 font-bold uppercase tracking-[0.08em]"
             disabled={retrying}
             onClick={retryAnalysis}
           >
@@ -260,31 +270,32 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
       )}
 
       {!behaviorPending && behaviorFailed && (
-        <div className="mt-3 p-3 rounded-lg border border-red-300 bg-red-50 text-red-900 text-sm flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span className="flex-1">
-            Behavior analysis couldn&apos;t finish for some answers (clip too
-            large, no face detected, or the backend was waking up).
+        <div className="mt-4 flex items-center gap-3 border border-[#A4262C]/40 bg-[#A4262C]/5 p-4 text-sm">
+          <CircleAlert className="h-4 w-4 shrink-0" aria-hidden />
+          <span className="flex-1 font-medium">
+            Some presence readings never developed — the clip may be too
+            large, faceless, or the room was waking up.
           </span>
           <Button
             size="sm"
             variant="outline"
+            className="rounded-none border-stage/40 font-bold uppercase tracking-[0.08em]"
             disabled={retrying}
             onClick={retryAnalysis}
           >
-            {retrying ? "Retrying…" : "Retry analysis"}
+            {retrying ? "Retrying…" : "Retry readings"}
           </Button>
         </div>
       )}
 
-      <div className="mt-6 space-y-4">
+      <div className="mt-6 space-y-5">
         {loading ? (
-          <div className="w-full flex flex-col gap-4 justify-center items-center">
+          <div className="flex flex-col gap-4" aria-label="Loading report">
             {[1, 2, 3].map((index) => (
               <div
                 key={index}
-                className="h-[200px] w-full bg-gray-200 animate-pulse rounded-lg"
-              ></div>
+                className="h-[120px] animate-pulse border border-stage/15 bg-paper-deep/50"
+              />
             ))}
           </div>
         ) : sessions && sessions.length > 0 ? (
@@ -292,253 +303,229 @@ const Feedback = ({ params }: { params: Promise<Params> }) => {
             const summary = parseBehavioralSummary(
               session.sessionInfo?.behavioralSummary ?? null,
             );
-            const isExpanded = expandedSessions.has(session.sessionId);
+            const open =
+              expandedSessions.has(session.sessionId) ||
+              (sessionIdx === 0 && expandedSessions.size === 0);
 
             return (
-              <div
+              <article
                 key={session.sessionId}
-                className="border-2 border-indigo-200 rounded-lg overflow-hidden bg-white shadow-md hover:shadow-lg transition-shadow"
+                className="border border-stage/25 bg-paper"
               >
-                {/* Session Header Card */}
                 <button
                   onClick={() => toggleSession(session.sessionId)}
-                  className="w-full p-4 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 transition-colors flex items-center justify-between"
+                  aria-expanded={open}
+                  className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-paper-deep/40 sm:px-6"
                 >
-                  <div className="flex-1 text-left">
-                    <h3 className="font-bold text-lg text-indigo-900">
-                      Interview Session {sessionIdx + 1}
-                    </h3>
+                  <span className="tnum font-display text-lg font-semibold tracking-[0.12em] text-tungsten">
+                    N-{(session.sessionId || "").slice(-4).toUpperCase() || "—"}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-display text-2xl font-semibold uppercase leading-none tracking-wide">
+                      Performance {sessionIdx + 1}
+                    </span>
                     {session.sessionInfo && (
-                      <p className="text-xs text-gray-600 mt-1">
-                        Started: {formatDate(session.sessionInfo.startedAt)}
-                        {session.sessionInfo.endedAt && (
+                      <span className="tnum mt-1 block text-xs font-medium text-tungsten">
+                        {formatDate(session.sessionInfo.startedAt)}
+                        <span aria-hidden> · </span>
+                        {session.answers.length}{" "}
+                        {session.answers.length === 1 ? "take" : "takes"}
+                        {avgConfidence(session.answers) !== null && (
                           <>
-                            {" "}
-                            • Ended: {formatDate(session.sessionInfo.endedAt)}
+                            <span aria-hidden> · </span>
+                            presence {avgConfidence(session.answers)}
                           </>
                         )}
-                      </p>
-                    )}
-                    <div className="flex gap-4 mt-2 text-sm flex-wrap">
-                      <span className="text-violet-700 font-semibold">
-                        Rating: {getAvgRating(session.answers)}/5
+                        {avgNervousness(session.answers) !== null && (
+                          <>
+                            <span aria-hidden> · </span>
+                            nerves {avgNervousness(session.answers)}
+                          </>
+                        )}
                       </span>
-                      {avgConfidence(session.answers) !== null && (
-                        <span className="text-emerald-700">
-                          Avg Confidence: {avgConfidence(session.answers)}
-                        </span>
-                      )}
-                      {avgNervousness(session.answers) !== null && (
-                        <span className="text-orange-700">
-                          Avg Nervousness: {avgNervousness(session.answers)}
-                        </span>
-                      )}
-                      {session.sessionInfo?.overallNervousnessLevel && (
-                        <span className="text-blue-700">
-                          Level: {session.sessionInfo.overallNervousnessLevel}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                    )}
+                  </span>
+                  <span className="stamp hidden !text-base sm:inline-grid">
+                    <span className="tnum">{getAvgRating(session.answers)} / 5</span>
+                  </span>
                   <ChevronDown
-                    className={`h-6 w-6 text-indigo-600 transition-transform ${
-                      isExpanded ? "rotate-180" : ""
-                    }`}
+                    aria-hidden
+                    className={cn(
+                      "h-5 w-5 shrink-0 transition-transform",
+                      open && "rotate-180"
+                    )}
                   />
                 </button>
 
-                {/* Expanded Content */}
-                {isExpanded && (
-                  <div className="border-t border-indigo-200 p-4 bg-white">
-                    {/* Behavioral Summary */}
+                {open && (
+                  <div className="border-t border-stage/20 bg-paper-deep/30 px-5 py-5 sm:px-6">
                     {summary && (
-                      <div className="mb-4 p-4 bg-gradient-to-br from-indigo-50 to-blue-50 border-2 border-indigo-200 rounded-lg">
-                        <h4 className="text-sm font-bold text-indigo-900 mb-3 flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4" />
-                          AI Behavioral Analysis
-                        </h4>
-
-                        <div className="space-y-3 text-sm">
-                          {/* Overall Assessment */}
-                          <div className="bg-white rounded p-2 border border-indigo-200">
-                            <p className="font-semibold text-indigo-900 mb-1">
-                              Overall Assessment
-                            </p>
-                            <p className="text-gray-700 text-xs">
-                              {summary.overall_assessment}
-                            </p>
-                          </div>
-
-                          {/* Strengths */}
-                          {summary.strengths &&
-                            summary.strengths.length > 0 && (
-                              <div className="bg-white rounded p-2 border border-green-200">
-                                <p className="font-semibold text-green-900 mb-1">
-                                  Strengths
-                                </p>
-                                <ul className="text-xs text-gray-700 list-disc list-inside space-y-1">
-                                  {summary.strengths.map((s, i) => (
-                                    <li key={i}>{s}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                          {/* Areas for Improvement */}
-                          {summary.areas_for_improvement &&
-                            summary.areas_for_improvement.length > 0 && (
-                              <div className="bg-white rounded p-2 border border-orange-200">
-                                <p className="font-semibold text-orange-900 mb-1">
-                                  Areas for Improvement
-                                </p>
-                                <ul className="text-xs text-gray-700 list-disc list-inside space-y-1">
-                                  {summary.areas_for_improvement.map((a, i) => (
-                                    <li key={i}>{a}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                          {/* Actionable Tips */}
-                          {summary.actionable_tips &&
-                            summary.actionable_tips.length > 0 && (
-                              <div className="bg-white rounded p-2 border border-blue-200">
-                                <p className="font-semibold text-blue-900 mb-1">
-                                  Actionable Tips
-                                </p>
-                                <ul className="text-xs text-gray-700 list-decimal list-inside space-y-1">
-                                  {summary.actionable_tips.map((t, i) => (
-                                    <li key={i}>{t}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
+                      <div className="mb-5 bg-stage p-5 text-paper sm:p-6">
+                        <h3 className="font-display text-sm font-semibold uppercase tracking-[0.22em] text-marquee-bright">
+                          The presence notes
+                        </h3>
+                        <p className="mt-2 max-w-3xl leading-relaxed text-paper/85">
+                          {summary.overall_assessment}
+                        </p>
+                        <div className="mt-4 grid gap-5 md:grid-cols-3">
+                          {summary.strengths?.length > 0 && (
+                            <div>
+                              <h4 className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-paper/65">
+                                Held the room
+                              </h4>
+                              <ul className="mt-2 list-disc space-y-1 pl-4 text-sm leading-relaxed text-paper/80">
+                                {summary.strengths.map((s, i) => (
+                                  <li key={i}>{s}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {summary.areas_for_improvement?.length > 0 && (
+                            <div>
+                              <h4 className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-paper/65">
+                                Work the edges
+                              </h4>
+                              <ul className="mt-2 list-disc space-y-1 pl-4 text-sm leading-relaxed text-paper/80">
+                                {summary.areas_for_improvement.map((a, i) => (
+                                  <li key={i}>{a}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {summary.actionable_tips?.length > 0 && (
+                            <div>
+                              <h4 className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-paper/65">
+                                Before next time
+                              </h4>
+                              <ul className="mt-2 list-decimal space-y-1 pl-4 text-sm leading-relaxed text-paper/80">
+                                {summary.actionable_tips.map((t, i) => (
+                                  <li key={i}>{t}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
 
-                    {/* Answers Section */}
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-bold text-gray-900 mb-3">
-                        Answers ({session.answers.length})
-                      </h4>
+                    <ol className="space-y-3">
                       {session.answers.map((res, ansIdx) => (
-                        <Collapsible key={ansIdx} className="w-full">
-                          <CollapsibleTrigger className="text-left flex justify-between gap-4 w-full bg-gray-100 hover:bg-gray-200 rounded-lg p-3 transition-colors">
-                            <span className="text-sm font-medium text-gray-900 flex-1 truncate">
-                              Q{ansIdx + 1}: {res?.question}
-                            </span>
-                            <div className="flex items-center gap-2">
+                        <li key={ansIdx}>
+                          <Collapsible className="border border-stage/25 bg-paper">
+                            <CollapsibleTrigger className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-paper-deep/40">
+                              <span className="tnum grid h-8 w-8 shrink-0 place-items-center bg-stage font-display text-sm font-semibold text-paper">
+                                {ansIdx + 1}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate text-[15px] font-bold">
+                                {res?.question}
+                              </span>
                               {res?.rating && (
-                                <span
-                                  className={`text-xs font-bold px-2 py-1 rounded ${
-                                    parseFloat(res.rating) >= 4
-                                      ? "bg-green-200 text-green-900"
-                                      : parseFloat(res.rating) >= 3
-                                        ? "bg-yellow-200 text-yellow-900"
-                                        : "bg-red-200 text-red-900"
-                                  }`}
-                                >
+                                <span className="tnum shrink-0 border border-stage/30 px-2 py-0.5 text-xs font-bold">
                                   {res.rating}/5
                                 </span>
                               )}
-                              <ChevronsUpDown className="h-4 w-4 text-gray-600" />
-                            </div>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="bg-gray-50 p-4 border-t border-gray-200 space-y-3">
-                            {/* Rating */}
-                            {res?.rating && (
-                              <div className="bg-red-50 border border-red-200 rounded p-2">
-                                <p className="text-xs font-semibold text-red-900">
-                                  Rating
-                                </p>
-                                <p className="text-xs text-red-900 mt-1">
-                                  {res.rating}/5
-                                </p>
-                              </div>
-                            )}
-
-                            {/* Your Answer */}
-                            <div className="bg-red-50 border border-red-200 rounded p-2">
-                              <p className="text-xs font-semibold text-red-900">
-                                Your Answer
-                              </p>
-                              <p className="text-xs text-red-900 mt-1 line-clamp-3">
-                                {res?.userAns || "No answer provided"}
-                              </p>
-                            </div>
-
-                            {/* Correct Answer */}
-                            <div className="bg-green-50 border border-green-200 rounded p-2">
-                              <p className="text-xs font-semibold text-green-900">
-                                Correct Answer
-                              </p>
-                              <p className="text-xs text-green-900 mt-1 line-clamp-3">
-                                {res?.correctAns || "Not available"}
-                              </p>
-                            </div>
-
-                            {/* AI Feedback */}
-                            <div className="bg-blue-50 border border-blue-200 rounded p-2">
-                              <p className="text-xs font-semibold text-blue-900">
-                                AI Feedback
-                              </p>
-                              <p className="text-xs text-blue-900 mt-1">
-                                {res?.feedback || "No feedback provided"}
-                              </p>
-                            </div>
-
-                            {/* Behavior Analysis */}
-                            {(res?.confidenceScore ||
-                              res?.nervousnessScore ||
-                              res?.videoUrl) && (
-                              <div className="bg-purple-50 border border-purple-200 rounded p-2">
-                                <p className="text-xs font-semibold text-purple-900 mb-2">
-                                  Behavior Analysis
-                                </p>
-                                <div className="grid grid-cols-3 gap-2 mb-2 text-xs">
-                                  <span className="text-purple-900">
-                                    <strong>Confidence:</strong>{" "}
-                                    {res?.confidenceScore ?? "n/a"}
-                                  </span>
-                                  <span className="text-purple-900">
-                                    <strong>Nervousness:</strong>{" "}
-                                    {res?.nervousnessScore ?? "n/a"}
-                                  </span>
-                                  <span className="text-purple-900">
-                                    <strong>Level:</strong>{" "}
-                                    {res?.nervousnessLevel ?? "n/a"}
-                                  </span>
+                              <ChevronsUpDown className="h-4 w-4 shrink-0 text-tungsten" aria-hidden />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="space-y-4 border-t border-stage/20 p-4 sm:p-5">
+                              <div className="grid gap-5 md:grid-cols-2">
+                                <div>
+                                  <h4 className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-tungsten">
+                                    Your take
+                                  </h4>
+                                  <p className="mt-1.5 text-sm leading-relaxed">
+                                    {res?.userAns || "No answer recorded."}
+                                  </p>
                                 </div>
-                                {res?.videoUrl && (
-                                  <video
-                                    src={res.videoUrl}
-                                    controls
-                                    className="rounded-md max-h-48 w-full mt-2"
-                                  />
-                                )}
+                                <div>
+                                  <h4 className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-tungsten">
+                                    The model take
+                                  </h4>
+                                  <p className="mt-1.5 text-sm leading-relaxed">
+                                    {res?.correctAns || "Not available."}
+                                  </p>
+                                </div>
                               </div>
-                            )}
-                          </CollapsibleContent>
-                        </Collapsible>
+                              <div className="border-t border-stage/20 pt-4">
+                                <h4 className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-tungsten">
+                                  The note
+                                </h4>
+                                <p className="mt-1.5 text-[15px] font-medium leading-relaxed">
+                                  {res?.feedback || "No note written."}
+                                </p>
+                              </div>
+                              {(res?.confidenceScore ||
+                                res?.nervousnessScore ||
+                                res?.videoUrl) && (
+                                <div className="border-t border-stage/20 pt-4">
+                                  <h4 className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-tungsten">
+                                    Presence
+                                  </h4>
+                                  <p className="tnum mt-1.5 text-sm font-bold">
+                                    Confidence {res?.confidenceScore ?? "—"}
+                                    <span aria-hidden> · </span>
+                                    Nerves {res?.nervousnessScore ?? "—"}
+                                    <span aria-hidden> · </span>
+                                    {res?.nervousnessLevel ?? "unrated"}
+                                  </p>
+                                  {res?.videoUrl && (
+                                    <video
+                                      src={res.videoUrl}
+                                      controls
+                                      className="mt-3 max-h-52 w-full bg-stage"
+                                    />
+                                  )}
+                                </div>
+                              )}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </li>
                       ))}
-                    </div>
+                    </ol>
                   </div>
                 )}
-              </div>
+              </article>
             );
           })
         ) : (
-          <div className="w-full p-8 flex justify-center items-center text-gray-500">
-            No feedback found
+          <div className="border border-dashed border-stage/40 px-6 py-14 text-center">
+            <p className="font-display text-2xl font-semibold uppercase tracking-wide">
+              No reviews yet
+            </p>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-tungsten">
+              Record at least one take in the session and the report is
+              written here.
+            </p>
+            {resolvedParams?.interviewId && (
+              <Link
+                href={`/dashboard/interview/${resolvedParams.interviewId}/start`}
+                className="btn-marquee mt-5 rounded-none"
+              >
+                Back to the session
+              </Link>
+            )}
           </div>
         )}
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
         <Link href="/dashboard">
-          <Button>Go Home</Button>
+          <Button
+            variant="outline"
+            className="w-full rounded-none border-stage/40 font-bold uppercase tracking-[0.08em] text-stage hover:bg-paper-deep sm:w-auto"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden /> Callboard
+          </Button>
         </Link>
+        {resolvedParams?.interviewId && typeof resolvedParams.interviewId === "string" && (
+          <Link href={`/dashboard/interview/${resolvedParams.interviewId}/start`}>
+            <Button
+              variant="outline"
+              className="w-full rounded-none border-stage/40 font-bold uppercase tracking-[0.08em] text-stage hover:bg-paper-deep sm:w-auto"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden /> Run it again
+            </Button>
+          </Link>
+        )}
       </div>
     </div>
   );

@@ -1,47 +1,42 @@
 "use client";
 import { planDataType } from "@/types/types";
-import { useUser } from "@clerk/nextjs";
+import { ArrowRight, Check, Minus } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
 function PlanItemCard({ plan }: { plan: planDataType }) {
-  const { user } = useUser();
   return (
-    <div className="rounded-2xl border border-gray-200 p-6 shadow-sm sm:px-8 lg:p-12">
-      <div className="text-center">
-        <h2 className="text-lg font-medium text-gray-900">
+    <div className="border border-stage/25 bg-paper p-7 sm:p-9">
+      <div className="border-b-2 border-stage pb-4">
+        <h2 className="font-display text-3xl font-semibold uppercase tracking-wide">
           {plan.name}
-          <span className="sr-only">Plan</span>
         </h2>
-
-        <p className="mt-2 sm:mt-4">
-          <strong className="text-3xl font-bold text-gray-900 sm:text-4xl">
-            {" "}
-            {plan.cost}${" "}
-          </strong>
-
-          <span className="text-sm font-medium text-gray-700">/month</span>
+        <p className="tnum mt-1 text-sm font-bold uppercase tracking-[0.18em] text-tungsten">
+          No card · No trial clock
         </p>
       </div>
 
-      <ul className="mt-6 space-y-2">
+      <ul className="mt-5 space-y-3">
         {plan.offering.map((item, index) => (
-          <li key={index} className="flex items-center gap-1 mb-2">
-            <h2 className="text-gray-700">{item.value}</h2>
+          <li key={index} className="flex items-center gap-3 text-[15px] font-medium">
+            {item.included ? (
+              <Check className="h-5 w-5 shrink-0" strokeWidth={3} aria-hidden />
+            ) : (
+              <Minus className="h-5 w-5 shrink-0 text-tungsten" aria-hidden />
+            )}
+            <span className={item.included ? "" : "text-tungsten line-through"}>
+              {item.value}
+            </span>
           </li>
         ))}
       </ul>
 
       <Link
-        href={
-          plan.paymentLink +
-          "?prefilled_email=" +
-          (user?.primaryEmailAddress?.emailAddress || "")
-        }
-        target="_blank"
-        className="mt-8 block rounded-full border border-indigo-600 bg-white px-12 py-3 text-center text-sm font-medium text-indigo-600 hover:ring-1 hover:ring-indigo-600 focus:outline-none focus:ring active:text-indigo-500"
+        href="/dashboard"
+        className="btn-marquee mt-7 w-full rounded-none"
       >
-        Get Started
+        Call your first mock
+        <ArrowRight className="h-4 w-4" aria-hidden />
       </Link>
     </div>
   );

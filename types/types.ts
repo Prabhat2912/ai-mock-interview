@@ -56,6 +56,7 @@ export interface planDataType {
   cost: number;
   offering: {
     value: string;
+    included: boolean;
   }[];
   paymentLink?: string;
 }

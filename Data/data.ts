@@ -3,65 +3,36 @@ import { navLinks, planDataType } from "@/types/types";
 export const options: navLinks[] = [
   {
     id: 1,
-    name: "Dashboard",
-    path: "/dashboard",
+    name: "Features",
+    path: "/#features",
   },
-
   {
     id: 2,
-    name: "Upgrade",
-    path: "/dashboard/upgrade",
+    name: "How it works",
+    path: "/#how-it-works",
   },
   {
     id: 3,
-    name: "How it Works?",
-    path: "/#hiw",
+    name: "Free forever",
+    path: "/#free",
+  },
+  {
+    id: 4,
+    name: "Dashboard",
+    path: "/dashboard",
   },
 ];
 export const planData: planDataType[] = [
   {
     id: 1,
-    name: "Free",
+    name: "Free forever",
     cost: 0,
     offering: [
-      {
-        value: "✔️ Create 3 Free Mock Interview",
-      },
-      {
-        value: "✔️ Unlimited Retake Interview",
-      },
-      {
-        value: "❌ Practice Question",
-      },
-      {
-        value: "❌ Exlcusive App Access",
-      },
-      {
-        value: "❌ Email Support",
-      },
-    ],
-  },
-  {
-    id: 1,
-    name: "Monthly",
-    cost: 7.99,
-    paymentLink: "https://buy.stripe.com/test_28o9EjbkvgfQ8VOeUV",
-    offering: [
-      {
-        value: "✔️ Create 3 Free Mock Interview",
-      },
-      {
-        value: "✔️ Unlimited Retake Interview",
-      },
-      {
-        value: "✔️ Practice Question",
-      },
-      {
-        value: "✔️ Exlcusive App Access",
-      },
-      {
-        value: "✔️ Email Support",
-      },
+      { value: "Unlimited mock interviews", included: true },
+      { value: "AI ratings and model answers", included: true },
+      { value: "Voice answers with live transcript", included: true },
+      { value: "Video presence and behavior insights", included: true },
+      { value: "Session history and retakes", included: true },
     ],
   },
 ];

@@ -79,8 +79,19 @@ const Start = ({ params }: { params: Promise<Params> }) => {
   };
 
   return (
-    <div className="p-4 min-h-[800px] transition-all flex flex-col gap-4 ">
-      <div className="grid grid-cols-1 md:grid-cols-2  gap-10">
+    <div className="flex min-h-[700px] flex-col gap-5 py-8">
+      <div className="flex flex-col gap-2 bg-stage px-5 py-4 text-paper sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <p className="font-display text-lg font-semibold uppercase tracking-[0.14em]">
+          {interviewData[0]?.jobPosition || "Performance in progress"}
+        </p>
+        <p className="tnum text-sm font-bold text-paper/60">
+          Cue {activeQuestionIndex + 1} of {mockInterviewQuestions.length || "…"}
+          <span aria-hidden> · </span>
+          {interviewSessionId ? `N-${interviewSessionId.slice(-4).toUpperCase()}` : ""}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-2">
         {!loading &&
         mockInterviewQuestions &&
         mockInterviewQuestions.length > 0 ? (
@@ -90,9 +101,10 @@ const Start = ({ params }: { params: Promise<Params> }) => {
             setActiveQuestionIndex={setActiveQuestionIndex}
           />
         ) : (
-          <div className="w-full h-[400px] border rounded-lg p-4 ">
-            <div className="bg-gray-300 animate-pulse w-full h-full "></div>
-          </div>
+          <div
+            aria-label="Loading cues"
+            className="h-[480px] animate-pulse border border-stage/15 bg-paper-deep/50"
+          />
         )}
 
         <RecordAnsSection
@@ -102,31 +114,43 @@ const Start = ({ params }: { params: Promise<Params> }) => {
           interviewSessionId={interviewSessionId}
         />
       </div>
-      <div className="flex gap-4  ">
+      <div className="flex flex-col-reverse gap-3 border border-stage/25 bg-paper p-4 sm:flex-row sm:items-center sm:justify-between">
         <Button
+          variant="outline"
+          className="rounded-none border-stage/40 font-bold uppercase tracking-[0.08em] text-stage hover:bg-paper-deep disabled:opacity-40"
+          disabled={activeQuestionIndex === 0}
           onClick={() => {
             if (activeQuestionIndex > 0) {
               setActiveQuestionIndex(activeQuestionIndex - 1);
             }
           }}
         >
-          Previous Question
+          Previous cue
         </Button>
+        <p className="text-center text-xs font-medium text-tungsten">
+          Save each take before moving on — scoring runs backstage.
+        </p>
         {activeQuestionIndex < mockInterviewQuestions.length - 1 ? (
           <Button
+            className="rounded-none bg-stage font-bold uppercase tracking-[0.08em] text-paper hover:bg-stage-soft"
             onClick={() => {
               if (activeQuestionIndex < mockInterviewQuestions.length - 1) {
                 setActiveQuestionIndex(activeQuestionIndex + 1);
               }
             }}
           >
-            Next Question
+            Next cue
           </Button>
         ) : (
           <Link
             href={`/dashboard/interview/${resolvedParams?.interviewId}/feedback`}
           >
-            <Button onClick={triggerBatchAnalysis}>End Interview</Button>
+            <Button
+              onClick={triggerBatchAnalysis}
+              className="btn-marquee w-full rounded-none sm:w-auto"
+            >
+              Ring down the curtain
+            </Button>
           </Link>
         )}
       </div>

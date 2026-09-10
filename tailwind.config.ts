@@ -9,7 +9,31 @@ export default {
   ],
   theme: {
   	extend: {
+		fontFamily: {
+			sans: ["var(--font-barlow)", "Barlow", "ui-sans-serif", "system-ui", "sans-serif"],
+			display: ["var(--font-condensed)", "\"Barlow Condensed\"", "Barlow", "ui-sans-serif", "sans-serif"],
+		},
   		colors: {
+			stage: {
+				DEFAULT: "#14110B",
+				soft: "#1E1A12",
+				raised: "#262117",
+				line: "#38311F",
+			},
+			paper: {
+				DEFAULT: "#F4EEE1",
+				deep: "#EAE0CB",
+				line: "#D6C8AC",
+			},
+			marquee: {
+				DEFAULT: "#D9961F",
+				bright: "#F0B73E",
+				deep: "#8F5E08",
+			},
+			tungsten: {
+				DEFAULT: "#5C554A",
+				bright: "#B9AF9E",
+			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
@@ -55,7 +79,37 @@ export default {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
-  		}
+  		},
+		boxShadow: {
+			stage: "0 18px 40px -18px rgb(20 17 11 / 0.45)",
+			lift: "0 10px 24px -12px rgb(20 17 11 / 0.35)",
+			stamp: "0 6px 16px -8px rgb(20 17 11 / 0.5)",
+		},
+		keyframes: {
+			"cue-in": {
+				from: { opacity: "0", transform: "translateY(14px)" },
+				to: { opacity: "1", transform: "translateY(0)" },
+			},
+			"stamp-in": {
+				"0%": { opacity: "0", transform: "scale(1.7) rotate(-7deg)" },
+				"60%": { opacity: "1", transform: "scale(0.96) rotate(-7deg)" },
+				"100%": { opacity: "1", transform: "scale(1) rotate(-7deg)" },
+			},
+			lamp: {
+				"0%, 100%": { opacity: "1" },
+				"50%": { opacity: "0.35" },
+			},
+			blink: {
+				"0%, 100%": { opacity: "1" },
+				"50%": { opacity: "0" },
+			},
+		},
+		animation: {
+			"cue-in": "cue-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) both",
+			"stamp-in": "stamp-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both",
+			lamp: "lamp 1.6s ease-in-out infinite",
+			blink: "blink 1s step-end infinite",
+		},
   	}
   },
   plugins: [require("tailwindcss-animate")],
