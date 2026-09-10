@@ -36,6 +36,15 @@ yarn-error.log*
 # vercel
 .vercel
 
+# ai coding agents & design tooling (local-only scaffolding)
+.agent/
+.cursor/
+.gemini/
+.opencode/
+.impeccable/
+PRODUCT.md
+DESIGN.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
